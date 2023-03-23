@@ -1,0 +1,5 @@
+{% for list in var._default %}
+{{ list }}:
+  name: {{ list.test }}
+  value: {{ list.number }}
+{% endfor %}

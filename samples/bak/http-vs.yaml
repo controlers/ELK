@@ -1,0 +1,57 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: client
+spec:
+  gateways:
+  - bookinfo-gateway
+  hosts:
+  - '*'
+  http:
+    - route:
+      - destination:
+          host: client
+          port:
+            number: 8080
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: tomcat
+spec:
+  gateways:
+  - bookinfo-gateway
+  hosts:
+  - '*'
+  http:
+  - match:
+    - uri:
+        prefix: "/cs"
+    rewrite:
+      uri: "/"
+    route:
+    - destination:
+        host: tomcat
+        port:
+          number: 8083
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: firefix
+spec:
+  gateways:
+  - bookinfo-gateway
+  hosts:
+  - '*'
+  http:
+  - match:
+    - uri:
+        prefix: "/firefix"
+    rewrite:
+      uri: "/"
+    route:
+    - destination:
+        host: firefix
+        port:
+          number: 5900

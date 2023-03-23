@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: py-zk-ex
+  namespace: monitoring
+  labels:
+    app: py-zk-ex
+    release: ada
+spec:
+  ports:
+  - port: 9141
+    name: py-zk-ex
+    targetPort: 9141
+    protocol: TCP
+  selector:
+    app: py-zk-ex
+    release: ada

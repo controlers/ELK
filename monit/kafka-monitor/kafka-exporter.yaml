@@ -1,0 +1,110 @@
+# Source: prometheus-kafka-exporter/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ada-prometheus-kafka-exporter
+  namespace: component
+  labels:
+    app: prometheus-kafka-exporter
+    chart: prometheus-kafka-exporter-1.5.0
+    release: "ada"
+    heritage: "Helm"
+---
+# Source: prometheus-kafka-exporter/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ada-prometheus-kafka-exporter
+  namespace: component
+  annotations:
+    {}
+  labels:
+    app: prometheus-kafka-exporter
+    chart: prometheus-kafka-exporter-1.5.0
+    release: ada
+    heritage: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9308
+      targetPort: exporter-port
+      protocol: TCP
+      name: exporter-port
+  selector:
+    app: prometheus-kafka-exporter
+    release: ada
+---
+# Source: prometheus-kafka-exporter/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ada-prometheus-kafka-exporter
+  namespace: component
+  labels:
+    app: prometheus-kafka-exporter
+    chart: prometheus-kafka-exporter-1.5.0
+    release: ada
+    heritage: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-kafka-exporter
+      release: ada
+  template:
+    metadata:
+      annotations:
+        {}
+      labels:
+        app: prometheus-kafka-exporter
+        release: ada
+    spec:
+      hostNetwork: false
+      hostPID: false
+      dnsPolicy: ClusterFirst
+      securityContext:
+        fsGroup: 1995
+        runAsUser: 1002
+        runAsNonRoot: true
+      serviceAccountName: ada-prometheus-kafka-exporter
+      containers:
+        - args:
+            - '--verbosity=0'
+            - '--kafka.server=10.43.247.188:9092'
+          env:
+          name: prometheus-kafka-exporter
+          image: "danielqsj/kafka-exporter:v1.4.2"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: exporter-port
+              containerPort: 9308
+              protocol: TCP
+          resources:
+            {}
+          securityContext:
+            allowPrivilegeEscalation: false
+---
+# Source: prometheus-kafka-exporter/templates/servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ada-prometheus-kafka-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus-kafka-exporter
+    helm.sh/chart: prometheus-kafka-exporter-1.5.0
+    app.kubernetes.io/instance: ada
+    app.kubernetes.io/managed-by: Helm
+    release: ada
+spec:
+  jobLabel: jobLabel
+  selector:
+    matchLabels:
+      app: prometheus-kafka-exporter
+      release: ada
+  namespaceSelector:
+    matchNames:
+    - component
+  endpoints:
+  - port: exporter-port
+    interval: 30s

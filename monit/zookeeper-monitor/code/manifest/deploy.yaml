@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zkexpoerter
+  namespace: monitoring
+  labels:
+    app: zkexpoerter
+    release: ada
+spec:
+  selector:
+    matchLabels:
+      app: zkexpoerter
+      release: ada
+  template:
+    metadata:
+      labels:
+        app: zkexpoerter
+        release: ada
+    spec:
+      nodeName: agent101
+      containers:
+      - name: zookeeperexporter
+        image: cs0621/zookeeper_exporter:v1.1.0
+        # image: josdotso/zookeeper-exporter
+        args: ["-zookeeper","10.42.0.89:2181","10.42.3.84:2181"]
+        #args: ["-zk-hosts","10.43.166.154:2181","-listen","0.0.0.0:9141","-timeout","30","-location","/metrics"]
+        ports:
+        - containerPort: 9141 
+          name: http

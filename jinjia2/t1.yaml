@@ -1,0 +1,7 @@
+_default:
+  test: win
+  number: 1
+  test: win1
+  number: 2
+  test: win3
+  number: 3

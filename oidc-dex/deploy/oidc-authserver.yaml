@@ -1,0 +1,183 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: authservice
+  namespace: istio-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: authn-delegator
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: authn-delegators
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: authn-delegator
+subjects:
+- kind: ServiceAccount
+  name: authservice
+  namespace: istio-system
+---
+apiVersion: v1
+data:
+  AUTHSERVICE_URL_PREFIX: /authservice/
+  GROUPS_ALLOWLIST: a,d,e,system:serviceaccounts
+  OIDC_AUTH_URL: /dex/auth
+  OIDC_PROVIDER: http://10.43.27.110:5556/dex
+  OIDC_SCOPES: profile,email,groups
+  SKIP_AUTH_URLS: /dex/
+  STRICT_SESSION_VALIDATION: "true"
+kind: ConfigMap
+metadata:
+  name: oidc-authservice-parameters-kc9dh974h8
+  namespace: istio-system
+---
+apiVersion: v1
+data:
+  CLIENT_ID: YXV0aHNlcnZpY2U=
+  CLIENT_SECRET: bG9uZ3JhbmRvbXZhbHVl
+kind: Secret
+metadata:
+  name: oidc-authservice-client-info-42kt9h882k
+  namespace: istio-system
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authservice
+  namespace: istio-system
+spec:
+  ports:
+  - name: http-authservice
+    port: 8080
+    targetPort: http-api
+  - name: http-web
+    port: 8082
+    targetPort: http-web
+  publishNotReadyAddresses: true
+  selector:
+    app: authservice
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: authservice
+  namespace: istio-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: authservice
+  serviceName: authservice
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      labels:
+        app: authservice
+    spec:
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: oidc-authservice-parameters-kc9dh974h8
+        - secretRef:
+            name: oidc-authservice-client-info-42kt9h882k
+        image: gcr.io/arrikto/kubeflow/oidc-authservice:6ac9400
+        imagePullPolicy: Never
+        name: authservice
+        ports:
+        - containerPort: 8080
+          name: http-api
+        - containerPort: 8082
+          name: http-web
+        - containerPort: 8081
+          name: http-readiness
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8081
+        volumeMounts:
+        - mountPath: /var/lib/authservice
+          name: data
+      securityContext:
+        fsGroup: 111
+      serviceAccountName: authservice
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: authservice-pvc
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: authn-filter
+  namespace: istio-system
+spec:
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: GATEWAY
+      listener:
+        filterChain:
+          filter:
+            name: envoy.http_connection_manager
+            subFilter:
+              name: envoy.router
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        typed_config:
+          '@type': type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+          http_service:
+            authorization_request:
+              allowed_headers:
+                patterns:
+                - exact: authorization
+                - exact: cookie
+            authorization_response:
+              allowed_upstream_headers:
+                patterns:
+                - exact: kubeflow-userid
+            server_uri:
+              cluster: outbound|8080||authservice.istio-system.svc.cluster.local
+              timeout: 10s
+              uri: http://authservice.istio-system.svc.cluster.local
+        name: envoy.filters.http.ext_authz
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: authservice-web
+  namespace: istio-system
+spec:
+  gateways:
+  - kubeflow/kubeflow-gateway
+  hosts:
+  - '*'
+  http:
+  - match:
+    - uri:
+        prefix: /authservice/
+    rewrite:
+      uri: /
+    route:
+    - destination:
+        host: authservice.istio-system.svc.cluster.local
+        port:
+          number: 8082

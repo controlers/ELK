@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: squid-exporter
+  namespace: monitoring
+  labels:
+    app: squid-exporter
+    release: ada
+spec:
+  selector:
+    matchLabels:
+      app: squid-exporter
+      release: ada
+  template:
+    metadata:
+      labels:
+        app: squid-exporter
+        release: ada
+    spec:
+      nodeName: agent
+      containers:
+      - name: squid-exporter
+        image: cs0621/squid-exporter:v1.10.3
+        env:
+          - name: SQUID_PORT
+            value: "7834"
+          - name: SQUID_HOSTNAME
+            value: "10.42.0.56"
+          - name: SQUID_EXPORTER_METRICS_PATH
+            value: "/metrics"
+          - name: SQUID_EXTRACTSERVICETIMES
+            value: "10s"
+        ports:
+          - containerPort: 9301
+            name: http-squid

@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: zookeeper-expoerter
+  namespace: monitoring
+  labels:
+    app: zkexpoerter
+    release: "ada"
+spec:
+  selector:
+    matchLabels:
+      app: zkexpoerter
+      release: "ada"
+  namespaceSelector:
+    any: true
+  endpoints:
+  - port: zkport

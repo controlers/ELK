@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: py-zk-ex
+  namespace: monitoring
+  labels:
+    app: py-zk-ex
+    release: ada
+spec:
+  selector:
+    matchLabels:
+      app: py-zk-ex
+      release: ada
+  template:
+    metadata:
+      labels:
+        app: py-zk-ex
+        release: ada
+    spec:
+      nodeName: agent101
+      containers:
+      - name: py-zk-ex
+        image: cs0621/python:3.8.5-alpine3.12
+        command: ["/bin/sh","-c","python -m http.server"]
+        #args: ["-zookeeper","10.43.166.154:2181"]
+        #args: ["-zk-hosts","10.43.166.154:2181","-listen","0.0.0.0:9141","-timeout","30","-location","/metrics"]
+        ports:
+        - containerPort: 9141
+          name: py-zk-ex

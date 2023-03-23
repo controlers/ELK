@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: squid-expoerter
+  namespace: monitoring
+  labels:
+    app: squid-exporter
+    release: "ada"
+spec:
+  selector:
+    matchLabels:
+      app: squid-exporter
+  namespaceSelector:
+    any: true
+  endpoints:
+  - port: squid-port
